@@ -1,0 +1,248 @@
+<template>
+  <div class="container">
+    <div class="page-header">
+      <h1>
+        Layered Image Stacks Example
+      </h1>
+      <p>
+        This page contains an example of adding two stacks as layers. Here we show a PET stack overlaid on a CT stack. The developer defines a custom function for determining which image in the stack
+        to show depending on the base layer image.
+      </p>
+      <a href="../index.html">Go back to the Examples page</a>
+    </div>
+
+    <div class="row">
+      <div class="col-xs-12 col-sm-9">
+        <div
+          style="width:512px;height:512px;position:relative;display:inline-block;"
+          oncontextmenu="return false"
+          class="cornerstone-enabled-image"
+          unselectable="on"
+          onselectstart="return false;"
+          onmousedown="return false;"
+        >
+          <div id="dicomImage" style="width:512px;height:512px;top:0px;left:0px; position:absolute;"></div>
+        </div>
+      </div>
+      <div class="col-xs-12 col-sm-3">
+        <div style="margin-bottom: 15px;">
+          <label for="syncViewports"> Sync Viewports</label><br />
+          <label for="syncViewportsYes">
+            <input id="syncViewportsYes" name="syncViewports" type="radio" value="1" checked />
+            Yes &nbsp;&nbsp;
+          </label>
+          <label for="syncViewportsNo">
+            <input id="syncViewportsNo" name="syncViewports" type="radio" value="0" />
+            No
+          </label>
+        </div>
+
+        <label for="layers">Select active layer</label>
+        <select name="layers" id="layers" size="2" style="width: 100%; min-width: 150px;"></select>
+        <div id="properties" style="width: 100%; min-width: 150px; margin-top: 15px;">
+          <label>Layer Properties</label>
+          <div style="width: 100%; padding: 5px 5px 5px 10px;">
+            <div style="margin-bottom: 15px;">
+              <label for="visible"> Visible</label><br />
+              <input name="visible" type="radio" value="1" /> Yes &nbsp;&nbsp; <input name="visible" type="radio" value="0" /> No
+            </div>
+            <div style="margin-bottom: 15px;">
+              <label for="colormaps"> Colormap </label>
+              <select id="colormaps" style="width:100%">
+                <option value="">None</option>
+              </select>
+            </div>
+            <div style="margin-bottom: 15px;">
+              <label for="imageOpacity"> Opacity</label>
+              <input id="imageOpacity" type="range" class="range" min="0" max="1" step="0.1" value="0" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+export default {
+  data() {
+    return {
+      imageId: 'wadouri:' + 'http://localhost:8099/dicmDemo/010025.dcm'
+    }
+  },
+  mounted() {
+    var element = document.getElementById('dicomImage')
+
+    // Select the right layer in the dropdown
+    function updateSelectedLayer(layerId) {
+      var $layers = $('#layers')
+      var currentLayerId = $layers.val()
+
+      if (currentLayerId !== layerId) {
+        $layers.val(layerId)
+        $layers.trigger('change')
+      }
+    }
+
+    // Listen to `change` event to set the selected layer as active
+    $('#layers').change(function(event) {
+      var layerId = event.currentTarget.value
+      cornerstone.setActiveLayer(element, layerId)
+    })
+
+    // Listen to `change` event to activate/deactivate the viewport synchronization
+    $('input[name=syncViewports]').change(function(event) {
+      var enabledElement = cornerstone.getEnabledElement(element)
+      enabledElement.syncViewports = event.currentTarget.value === '1'
+      cornerstone.updateImage(element)
+    })
+
+    $('#colormaps').change(function() {
+      var layer = cornerstone.getActiveLayer(element)
+      layer.viewport.colormap = $('#colormaps').val()
+      cornerstone.updateImage(element)
+    })
+
+    // Listen to `change` event to update the opacity of the active layer
+    $('#imageOpacity').change(function(event) {
+      var layer = cornerstone.getActiveLayer(element)
+      layer.options.opacity = parseFloat(event.currentTarget.value)
+      cornerstone.updateImage(element)
+    })
+
+    // Listen to `change` event to update the visibility of the active layer
+    $('input[name=visible]').change(function(event) {
+      var layer = cornerstone.getActiveLayer(element)
+      layer.options.visible = event.currentTarget.value === '1'
+      cornerstone.updateImage(element)
+    })
+
+    // This event will be called every time a layer is added through cornerstone.addLayer
+    // The layer is added to the dropdown to make it possible to select and interact with it
+    element.addEventListener('cornerstonelayeradded', function(e) {
+      var eventData = e.detail
+      var layer = cornerstone.getLayer(eventData.element, eventData.layerId)
+      var $layers = $('#layers')
+      var $layerOption = $('<option></option>')
+        .val(layer.layerId)
+        .text(layer.options.name)
+
+      // Set the layer as selected in case its the the first layer to be added
+      if ($layers.children().length === 0) {
+        $layerOption.prop('selected', true)
+      }
+
+      $layers.append($layerOption)
+    })
+
+    // This event will be called every time cornerstone.setActiveLayer is called
+    // We need to load the layer properties and update the selected layer in the dropdown
+    element.addEventListener('cornerstoneactivelayerchanged', function(e) {
+      var eventData = e.detail
+      var layer = cornerstone.getActiveLayer(element)
+      var colormap = layer.viewport.colormap || ''
+      var opacity = layer.options.opacity == null ? 1 : layer.options.opacity
+      var visible = layer.options.visible !== false ? 1 : 0
+
+      // Restore all properties for the active layer
+      $('#imageOpacity').val(opacity)
+      $('input[name=visible][value=' + visible + ']').prop('checked', true)
+      $('#colormaps').val(colormap)
+
+      updateSelectedLayer(eventData.layerId)
+    })
+
+    // Populate colormap dropdown with all the default ones
+    function fillColormapsList() {
+      var $dropdown = $('#colormaps')
+      var colormapsList = cornerstone.colors.getColormapsList()
+
+      var addOption = function(id, name) {
+        var $option = $('<option></option>')
+          .val(id)
+          .text(name)
+
+        $dropdown.append($option)
+      }
+
+      colormapsList.forEach(function(colormapItem) {
+        addOption(colormapItem.id, colormapItem.name)
+      })
+    }
+
+    cornerstone.enable(element)
+
+    var ctStack = {
+      imageIds: ['ct://1', 'ct://2'],
+      currentImageIdIndex: 0,
+      options: {
+        opacity: 1,
+        visible: true,
+        name: 'CT'
+      }
+    }
+
+    var petStack = {
+      imageIds: ['pet://1', 'pet://2'],
+      currentImageIdIndex: 0,
+      options: {
+        opacity: 0.7,
+        visible: true,
+        viewport: {
+          colormap: 'jet',
+          voi: {
+            windowWidth: 30,
+            windowCenter: 17
+          }
+        },
+        name: 'PET'
+      }
+    }
+
+    // Select a renderer and apply the specified options
+    var renderer = new cornerstoneTools.stackRenderers.FusionRenderer()
+    renderer.findImageFn = function(imageIds, targetImageId) {
+      var minDistance = 1
+      var targetImagePlane = cornerstone.metaData.get('imagePlane', targetImageId)
+      var imagePositionZ = targetImagePlane.imagePositionPatient.z
+
+      var closest
+      imageIds.forEach(function(imageId) {
+        var imagePlane = cornerstone.metaData.get('imagePlane', imageId)
+        var imgPosZ = imagePlane.imagePositionPatient.z
+        var distance = Math.abs(imgPosZ - imagePositionZ)
+        if (distance < minDistance) {
+          minDistance = distance
+          closest = imageId
+        }
+      })
+
+      return closest
+    }
+
+    // Create a stack from the image object array
+    cornerstone.loadAndCacheImage(ctStack.imageIds[0]).then(image => {
+      cornerstone.displayImage(element, image)
+
+      cornerstoneTools.addStackStateManager(element, ['stack'])
+      cornerstoneTools.addToolState(element, 'stack', ctStack)
+      cornerstoneTools.addToolState(element, 'stack', petStack)
+      cornerstoneTools.addToolState(element, 'stackRenderer', renderer)
+
+      renderer.render(element)
+
+      cornerstoneTools.mouseInput.enable(element)
+      cornerstoneTools.mouseWheelInput.enable(element)
+      cornerstoneTools.wwwc.activate(element, 1)
+      cornerstoneTools.pan.activate(element, 2)
+      cornerstoneTools.zoom.activate(element, 4)
+      cornerstoneTools.stackScrollWheel.activate(element)
+    })
+
+    fillColormapsList()
+  },
+  methods: {}
+}
+</script>
+
+<style></style>
