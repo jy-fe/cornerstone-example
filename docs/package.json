@@ -1,0 +1,48 @@
+{
+  "name": "starcleric-component-lib",
+  "description": "the starcleric front end component library for Vue.js",
+  "author": "Conerstonejs",
+  "private": true,
+  "version": "0.0.1",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vuepress dev docs",
+    "build": "vuepress build docs",
+    "dev:init-web": "npm run build:icon-web && npm run build:package-web && npm run dev",
+    "dev:init-m": "npm run build:icon-m && npm run build:package-m && npm run dev",
+    "build:icon-web": "node bin/iconInit.js web",
+    "build:icon-m": "node bin/iconInit.js m",
+    "build:package-web": "node bin/packageInit.js web",
+    "build:package-m": "node bin/packageInit.js m",
+    "lint": "prettier --write 'docs/**/*.md'"
+  },
+  "prettier": {
+    "printWidth": 80,
+    "tabWidth": 2,
+    "useTabs": false,
+    "semi": false,
+    "singleQuote": true,
+    "trailingComma": "none",
+    "bracketSpacing": true,
+    "jsxBracketSameLine": false,
+    "arrowParens": "avoid",
+    "proseWrap": "never"
+  },
+  "devDependencies": {
+    "markdown-it-container": "^2.0.0",
+    "markdown-it-vuese": "^0.4.0",
+    "prettier": "^1.14.2",
+    "sass-loader": "^7.2.0",
+    "vuepress-plugin-demo-block": "^0.7.2"
+  },
+  "dependencies": {
+    "element-ui": "^2.10.0",
+    "fs": "^0.0.1-security",
+    "less": "^3.9.0",
+    "less-loader": "^5.0.0",
+    "node-sass": "^4.12.0",
+    "path": "^0.12.7",
+    "postcss": "^7.0.17",
+    "vue": "^2.6.6"
+  }
+}
