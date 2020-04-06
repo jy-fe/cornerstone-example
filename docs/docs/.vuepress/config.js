@@ -43,7 +43,7 @@ module.exports = {
       {
         text: '相关文档',
         items: [
-          { text: '文档1', link: '1' },
+          { text: '医学术语', link: '1' },
           { text: '文档2', link: '2' }
         ]
       }

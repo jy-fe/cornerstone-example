@@ -5,13 +5,14 @@
     </el-header>
     <el-container class="body-container">
       <el-aside class="left-aside">
-        <left-aside> </left-aside>
+        <left-aside></left-aside>
       </el-aside>
       <el-main class="main-content">
         <div class="dicom-image-container">
           <div id="dicomImage"></div>
-          <div id="mrbottomright" style="position: absolute;bottom:3px; right:3px;color: #fff;">Zoom:</div>
-          <div id="mrbottomleft" style="position: absolute;bottom:3px; left:3px;color: #fff;">WW/WC:</div>
+          <div id="mrbottomleft" style="position: absolute;bottom:3px; right:3px;color: #fff;">WW/WC:</div>
+          <div id="mrbottomright" style="position: absolute;bottom:23px; right:3px;color: #fff;">Zoom:</div>
+          <div id="mrbottomleft" style="position: absolute;bottom:3px; left:3px;color: #fff;">Image: {{imageIndexView}}</div>
         </div>
         <sequence-bar></sequence-bar>
       </el-main>
@@ -40,34 +41,90 @@ export default {
   },
   computed: {
     ...mapGetters({
-      nidusDataList: 'common/nidusDataList'
-    })
+      curentSeriesIndex: 'common/curentSeriesIndex',
+      nidusDataList: 'common/nidusDataList',
+      seriesList: 'common/seriesList',
+      stackList: 'common/stackList',
+    }),
+    stack() {
+      return this.stackList[this.curentSeriesIndex]
+    },
+    imageIndexView() {
+      console.log('this.stack...', this.stack, this.stackList, this.curentSeriesIndex);
+
+      return this.stack ? `${this.stack.currentImageIdIndex + 1}/${this.stack.imageIds.length}` : ''
+    }
   },
   mounted() {
     console.log('nidusDataList......', this.nidusDataList)
+    // 查询所有序列
+    this.initSeriers()
 
     const element = document.getElementById('dicomImage')
     cornerstone.enable(element)
-    let url = 'example://1'
+    // let url = 'example://1'
     // url = 'myImageLoader:http://proximatest.cn-sh2.ufileos.com/dr/1.2.826.0.1.3680043.2.461.10017634.3205212670/1.3.12.2.1107.5.1.4.73757.30000018052307572844700041984/JPG/000001.jpg?UCloudPublicKey=TOKEN_a239136a-222a-471d-9eaa-e57b4df6f4ca&Expires=&Signature=nZbywL0VsYeHeHWiscC4WUXSYaY%3D'
-    this.loadAndViewImage(url)
+    this.loadAndViewImage(0)
   },
   methods: {
+    // 查询所有序列
+    initSeriers() {
+      this.$store.dispatch('common/querySeriers')
+    },
     //当点击加载图像时 调用 loadAndViewImage 加载 Dicom 图像
-    loadAndViewImage(imageId) {
+    loadAndViewImage(seriersIndex = 0) {
       const element = document.getElementById('dicomImage')
-      const axialStack1 = {
-        currentImageIdIndex: 0,
-        imageIds: ['example://2', 'example://3'],
-        preventCache: true
-      }
+      // const axialStack1 = {
+      //   currentImageIdIndex: 0,
+      //   imageIds: ['example://2', 'example://3'],
+      //   preventCache: true
+      // }
 
-      cornerstone.loadAndCacheImage(imageId).then(image => {
-        const viewport = cornerstone.getDefaultViewportForImage(element, image)
-        cornerstone.displayImage(element, image, viewport)
+      // const seriesIndex = 0
+      // const series = this.seriesList[seriersIndex]
+      // const stack = {
+      //   seriesDescription: series.seriesDescription,
+      //   stackId: series.seriesNumber,
+      //   imageIds: series.imageIds,
+      //   seriesIndex: seriesIndex,
+      //   currentImageIdIndex: 0,
+      //   frameRate: series.frameRate
+      // }
+      this.$store.dispatch('common/setCurrentSeriersIndex', seriersIndex)
+      const stack = this.stackList[seriersIndex]
+      cornerstone.loadAndCacheImage(stack.imageIds[0]).then(image => {
 
-        cornerstoneTools.addStackStateManager(element, ['stack'])
-        cornerstoneTools.addToolState(element, 'stack', axialStack1)
+        // cornerstoneTools.addStackStateManager(element, ['stack'])
+        // cornerstoneTools.addToolState(element, 'stack', axialStack1)
+
+        // Stack tools
+        cornerstoneTools.addStackStateManager(element, ['playClip']);
+        cornerstoneTools.addToolState(element, 'stack', stack);
+        cornerstoneTools.stackScrollWheel.activate(element);
+        cornerstoneTools.stackPrefetch.enable(element);
+
+        const stackState = cornerstoneTools.getToolState(element, 'stack')
+        stackState.data[0] = stack
+        stackState.data[0].currentImageIdIndex = 0
+
+        // const viewport = cornerstone.getDefaultViewportForImage(element, image)
+        // cornerstone.displayImage(element, image, viewport)
+
+        // Get the default viewport
+        var defViewport = cornerstone.getDefaultViewport(element, image)
+        // Get the current series stack index
+        // Display the image
+        cornerstone.displayImage(element, image, defViewport)
+        // Fit the image to the viewport window
+        cornerstone.fitToWindow(element)
+
+        // Prefetch the remaining images in the stack (?)
+        cornerstoneTools.stackPrefetch.enable(element)
+
+        // Play clip if stack is a movie (has framerate)
+        if (stack.frameRate !== undefined) {
+          cornerstoneTools.playClip(element, stack.frameRate)
+        }
 
         cornerstoneTools.mouseInput.enable(element) //鼠标按下事件
         cornerstoneTools.mouseWheelInput.enable(element) //鼠标滚轮事件
@@ -76,7 +133,7 @@ export default {
         cornerstoneTools.wwwc.activate(element, 1) // ww/wc is the default tool for left mouse button
         cornerstoneTools.pan.activate(element, 2) // pan is the default tool for middle mouse button
         cornerstoneTools.zoom.activate(element, 4) // zoom is the default tool for right mouse button
-        cornerstoneTools.zoomWheel.activate(element) // zoom is the default tool for middle mouse wheel
+        // cornerstoneTools.zoomWheel.activate(element) // zoom is the default tool for middle mouse wheel
         cornerstoneTools.probe.enable(element)
         cornerstoneTools.length.enable(element)
         cornerstoneTools.ellipticalRoi.enable(element)
@@ -171,6 +228,7 @@ export default {
     flex: 1;
     height: 100%;
     .dicom-image-container {
+      position: relative;
       flex: 1;
     }
   }

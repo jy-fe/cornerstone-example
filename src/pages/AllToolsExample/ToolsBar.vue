@@ -1,12 +1,10 @@
 <template>
   <!-- <ul class="tools-bar">
     <i class="iconfont icon-juxing"></i>
-  </ul> -->
+  </ul>-->
   <ul class="tools-bar">
-    <a v-for="item in barList" :key="item.id" :id="item.id" class="bar-item" @click="activate(item)">
-      {{ item.icon }}
-    </a>
-    <el-button @click="clearAll" style="">清空</el-button>
+    <a v-for="item in barList" :key="item.id" :id="item.id" class="bar-item" @click="activate(item)">{{ item.icon }}</a>
+    <el-button @click="clearAll" style>清空</el-button>
   </ul>
 </template>
 
@@ -87,7 +85,7 @@ export default {
     }
   },
   mounted() {
-    this.element = $(`#${this.elementId}`).get(0)
+    this.element = document.getElementById(`#${this.elementId}`)
   },
   methods: {
     activate({ id, type, activeMouse }) {
